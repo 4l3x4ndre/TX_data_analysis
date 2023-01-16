@@ -2,6 +2,8 @@ import json
 import os
 import matplotlib.pyplot as plt
 import csv
+from error_data import *
+
 
 
 def main():
@@ -68,6 +70,28 @@ def main():
 
             for d in data:
 
+                # Correction des erreurs liées au logiciel : ajout des images remises à zéro
+                if participant == 'Amandine' and corpus == 'C2A' \
+                        and float(d['timeStamp']) > 204.66:
+                    for i in range(len(AMANDINE_ERROR['idValidated'])):
+                        if not AMANDINE_ERROR['idValidated'][i] in d['idValidated']:
+                            d['idValidated'].append(AMANDINE_ERROR['idValidated'][i])
+                            d['categoryValidated'].append(AMANDINE_ERROR['categoryValidated'][i])
+
+                if participant == 'Marie' and corpus == 'C2B' \
+                        and float(d['timeStamp']) > 333.54:
+                    for i in range(len(MARIE_ERROR['idValidated'])):
+                        if not MARIE_ERROR['idValidated'][i] in d['idValidated']:
+                            d['idValidated'].append(MARIE_ERROR['idValidated'][i])
+                            d['categoryValidated'].append(MARIE_ERROR['categoryValidated'][i])
+
+                if participant == 'Nathanael' and corpus == 'C3B' \
+                        and float(d['timeStamp']) > 215.747:
+                    for i in range(len(NATHANAEL_ERROR['idValidated'])):
+                        if not NATHANAEL_ERROR['idValidated'][i] in d['idValidated']:
+                            d['idValidated'].append(NATHANAEL_ERROR['idValidated'][i])
+                            d['categoryValidated'].append(NATHANAEL_ERROR['categoryValidated'][i])
+
                 # nb_image_valide_a_d indique le nombre d'image validées à la donnée d
                 nb_image_valide_a_d = len(d['idValidated'])
 
@@ -87,8 +111,11 @@ def main():
                     tmp_validation_temps = float(d['timeStamp'])
                     tmp_nb_total_validation += 1
 
-                resultats['acceleration_moyenne_tete'] += d['headAcceleration']
-                resultats['acceleration_moyenne_manette'] += d['controllerRAcceleration']
+                # Acceleration
+                if 'headAcceleration' in d.keys():
+                    resultats['acceleration_moyenne_tete'] += d['headAcceleration']
+                if 'controllerRAcceleration' in d.keys():
+                    resultats['acceleration_moyenne_manette'] += d['controllerRAcceleration']
 
                 # Plot
                 if nb_image_valide_a_d > 0 and nb_image_valide_a_d != len(data[-1]['idValidated']):
@@ -96,17 +123,20 @@ def main():
                     temps.append(d['timeStamp'])
 
             # Fin de la boucle
-            # -------------------------------
+            # ---------------------------------------------------------------------------------------------
             # Ecriture des resultats :
 
             plot_title = f"{corpus} - {participant} - {condition}"
             plt.title(plot_title)
             plt.plot(temps, nb_images_validees, color="green")
             plt.savefig('./data/plot/' + plot_title + '.png')
-            plt.show()
+            plt.clf()
 
             # Caclul des moyennes
-            resultats['temps_moyen_entre_zoom'] = "{:.2f}".format(tmp_temps_total_entre_zoom/resultats['nb_total_zoom'])
+            if resultats['nb_total_zoom'] > 0:
+                resultats['temps_moyen_entre_zoom'] = "{:.2f}".format(tmp_temps_total_entre_zoom/resultats['nb_total_zoom'])
+            else:
+                resultats['temps_moyen_entre_zoom'] = 0
             resultats['temps_moyen_entre_validation'] = "{:.2f}".format(
                 tmp_temps_total_entre_validation / tmp_nb_total_validation
             )

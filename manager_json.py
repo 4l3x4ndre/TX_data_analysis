@@ -23,6 +23,12 @@ def resultats_chiffre(fichiers, dossier_entree, dossier_sortie, csv_bool):
         condition = conditions[3]
         if format == '2d' : condition = '2d'
 
+        # Variable pour la probabilité de validation après un zoom :
+        images_et_tps_zoom = {}
+        liste_images_validees_dans_le_delai_de_zoom = []
+        nombre_images_validees = 0
+        nombre_images_validees_apres_zoom = 0
+
         tmp_zoom_etat = 0
         tmp_zoom_temps = 0.0
 
@@ -48,7 +54,11 @@ def resultats_chiffre(fichiers, dossier_entree, dossier_sortie, csv_bool):
             # Validation
             'temps_moyen_entre_validation': 0,
             'acceleration_moyenne_tete': 0,
-            'acceleration_moyenne_manette': 0
+            'acceleration_moyenne_manette': 0,
+            'probabilité_de_valider_apres_un_zoom':0,
+            'probabilite_quune_image_validee_est_ete_zoomee_avant':0,
+            'nombre_image_validee_apres_zoom_dans_delai_1s':0,
+            'pourcentage_images_validees_correctes_dans_celles_zoomees':0
         }
 
         nb_images_validees = []
@@ -101,6 +111,11 @@ def resultats_chiffre(fichiers, dossier_entree, dossier_sortie, csv_bool):
                 tmp_zoom_etat = 1
                 resultats['nb_total_zoom'] += 1
                 tmp_temps_total_entre_zoom += float(d['timeStamp']) - tmp_zoom_temps
+
+                # On tient compte de l'image SEULEMENT si elle est validée à la fin
+                if d['imageFilename'] in data[-1]['idValidated']:
+                    images_et_tps_zoom[d['imageFilename']] = d['timeStamp']
+
             elif tmp_zoom_etat == 1 and d['controllerAction'] != 'Zoom':
                 tmp_zoom_temps = float(d['timeStamp'])
                 tmp_zoom_etat = 0
@@ -125,6 +140,17 @@ def resultats_chiffre(fichiers, dossier_entree, dossier_sortie, csv_bool):
             #     nb_images_validees.append(nb_image_valide_a_d)
             #     temps.append(d['timeStamp'])
 
+            if nombre_images_validees < len(d['idValidated']):
+                nombre_images_validees = len(d['idValidated'])
+
+                if d['imageFilename'] in images_et_tps_zoom.keys() and \
+                        d['timeStamp'] - images_et_tps_zoom[d['imageFilename']] < 1 and \
+                        images_et_tps_zoom[d['imageFilename']] != -1:
+                    nombre_images_validees_apres_zoom += 1
+                    images_et_tps_zoom[d['imageFilename']] = -1
+                    if not d['imageFilename'] in liste_images_validees_dans_le_delai_de_zoom:
+                        liste_images_validees_dans_le_delai_de_zoom.append(d['imageFilename'])
+
         # Fin de la boucle
         # ---------------------------------------------------------------------------------------------
         # Ecriture des resultats :
@@ -140,6 +166,7 @@ def resultats_chiffre(fichiers, dossier_entree, dossier_sortie, csv_bool):
         if resultats['nb_total_zoom'] > 0:
             resultats['temps_moyen_entre_zoom'] = "{:.2f}".format(
                 tmp_temps_total_entre_zoom / resultats['nb_total_zoom'])
+            resultats['probabilité_de_valider_apres_un_zoom'] = (nombre_images_validees_apres_zoom/resultats['nb_total_zoom'])*100
         else:
             resultats['temps_moyen_entre_zoom'] = 0
         resultats['temps_moyen_entre_validation'] = "{:.2f}".format(
@@ -147,6 +174,20 @@ def resultats_chiffre(fichiers, dossier_entree, dossier_sortie, csv_bool):
         )
         resultats['acceleration_moyenne_tete'] = resultats['acceleration_moyenne_tete'] / len(data)
         resultats['acceleration_moyenne_manette'] = resultats['acceleration_moyenne_manette'] / len(data)
+
+        # ...% des des images validees ont d'abord été zoomée (avec un délai de 1 seconde)
+        resultats['probabilite_quune_image_validee_est_ete_zoomee_avant'] = (nombre_images_validees_apres_zoom/resultats['nb_images_validees'])*100
+        resultats['nombre_image_validee_apres_zoom_dans_delai_1s'] = nombre_images_validees_apres_zoom
+
+        nombre_image_correcte_dans_celle_zoommee = 0
+        for image in liste_images_validees_dans_le_delai_de_zoom:
+            if data[-1]['categoryValidated'][data[-1]['idValidated'].index(image)] == 'cible':
+                nombre_image_correcte_dans_celle_zoommee += 1
+        # for image_zoomee_validee, tps_zoom in images_et_tps_zoom.items():
+        #     if tps_zoom == -1 and data[-1]['categoryValidated'][data[-1]['idValidated'].index(image_zoomee_validee)] == 'cible':
+        #         nombre_image_correcte_dans_celle_zoommee += 1
+        if nombre_images_validees_apres_zoom > 0:
+            resultats['pourcentage_images_validees_correctes_dans_celles_zoomees'] = (nombre_image_correcte_dans_celle_zoommee/nombre_images_validees_apres_zoom)*100
 
         if csv_bool:
             with open("resultat.csv", "a") as f:
@@ -205,6 +246,8 @@ def graphe_positions(nom_du_fichier):
     camera_y = []
     camera_z = []
 
+    camera_acc = []
+
     with open(nom_du_fichier, 'r+', encoding='utf8') as file:
         # Convert file to JSON
         data = json.loads(file.read())['frames']
@@ -223,12 +266,13 @@ def graphe_positions(nom_du_fichier):
             camera_x.append(d['camPosition']['x'])
             camera_y.append(d['camPosition']['y'])
             camera_z.append(d['camPosition']['z'])
+            camera_acc.append(d['camAccelaration'])
 
     plot_title_template = f"{condition} - {corpus} - {participant}"
     # Condition 2D
     if format == '2d':
         plot_title = plot_title_template + "\nPosition de la souris"
-        fig, axis = plt.subplots(ncols=2, figsize=(15, 7))
+        fig, axis = plt.subplots(ncols=3, figsize=(20, 7))
         axis[0].set(xlim=(0,2000) ,ylim=(0, 1200))
         axis[0].set_title(plot_title)
         axis[0].plot(positions_x, positions_y, color="green")
@@ -236,6 +280,10 @@ def graphe_positions(nom_du_fichier):
         plot_title = plot_title_template + "\nPosition de la caméra\nDébut en haut à gauche"
         axis[1].set_title(plot_title)
         axis[1].plot(camera_x, camera_z, color="blue")
+
+        plot_title = plot_title_template + "\nAcceleration de la caméra"
+        axis[2].set_title(plot_title)
+        axis[2].plot(temps, camera_acc, color="purple")
         plt.savefig('./data/plot_pos/' + format + '/' + plot_title_template + '.png')
         plt.clf()
     # Condition 3D
@@ -288,13 +336,40 @@ def graphe_image_fov_et_rotation(nom_du_fichier):
 
     plot_title_template = f"images fov {condition} - {corpus} - {participant}"
     plot_title = plot_title_template + "\nNombre d'image dans le champ de vision en fonction du temps"
-    fig, axis = plt.subplots(ncols=1, figsize=(10, 10))
-    axis.set(xlim=(0, 310), ylim=(0, 1500))
-    axis.plot(temps, images_fov, color="red")
-    axis.set_title(plot_title)
-    plt.savefig('./data/plot_fov/' + plot_title_template + '.png')
+    fig, axis = plt.subplots(ncols=3, figsize=(30, 12))
+    # axis.set(xlim=(0, 310), ylim=(0, 1500))
+    # axis.plot(temps, images_fov, color="red")
+    # axis.set_title(plot_title)
+    # plt.savefig('./data/plot_fov/' + plot_title_template + '.png')
+    # plt.clf()
+
+    axis[0].set(xlim=(0, 310), ylim=(0, 1500))
+    axis[0].plot(temps, images_fov, color="green")
+    axis[0].set_title(plot_title)
+
+    plot_title_template = f"rotations {condition} - {corpus} - {participant}"
+    plot_title = plot_title_template + "\nRotation en fonction du temps\n" \
+                                       "Les pointillées signifient un changement rapide"
+    # fig, axis = plt.subplots(ncols=1, figsize=(10, 10))
+    axis[1].set(ylim=(-50, 400))
+    axis[1].plot(temps, [x[1] for x in rotation], 'o', markersize=1, color="red")
+    axis[1].set_title(plot_title)
+    # plt.savefig('./data/plot_rot/' + plot_title + '.png')
+    # plt.clf()
+
+    plot_title_template = f"rotations {condition} - {corpus} - {participant}"
+    plot_title = plot_title_template + "\nFréquence de rotation\n" \
+                                       "Abscisse : angle de rotation\n" \
+                                       "Ordonnée : nombre de données ayant cette rotation"
+    # fig, axis = plt.subplots(ncols=1, figsize=(10, 10))
+    axis[2].set(xlim=(-10, 400))
+    axis[2].plot([x for x in range(0, 360)], frequence_rot, color="red")
+    axis[2].set_title(plot_title)
+    plt.savefig('./data/plot_rot/tout_ensemble/' + 'rotations_fov'  + '.png')
     plt.clf()
 
+
+    # ----------------------------------------------------------------------------------------------
     plot_title_template = f"rotations {condition} - {corpus} - {participant}"
     plot_title = plot_title_template + "\nRotation en fonction du temps\n" \
                                        "Les pointillées signifient un changement rapide"
@@ -302,10 +377,21 @@ def graphe_image_fov_et_rotation(nom_du_fichier):
     axis.set(ylim=(-50, 400))
     axis.plot(temps, [x[1] for x in rotation], 'o', markersize=1, color="red")
     axis.set_title(plot_title)
-    plt.savefig('./data/plot_rot/' + plot_title + '.png')
+    plt.savefig('./data/plot_rot/rotations/' + plot_title_template + '.png')
     plt.clf()
 
-    plot_title_template = f"rotations {condition} - {corpus} - {participant}"
+    # ----------------------------------------------------------------------------------------------
+    plot_title_template = f"images fov {condition} - {corpus} - {participant}"
+    plot_title = plot_title_template + "\nNombre d'image dans le champ de vision en fonction du temps"
+    fig, axis = plt.subplots(ncols=1, figsize=(10, 10))
+    axis.set(xlim=(0, 310), ylim=(0, 1500))
+    axis.plot(temps, images_fov, color="red")
+    axis.set_title(plot_title)
+    plt.savefig('./data/plot_fov/' + plot_title_template + '.png')
+    plt.clf()
+
+    # ----------------------------------------------------------------------------------------------
+    plot_title_template = f"frequences {condition} - {corpus} - {participant}"
     plot_title = plot_title_template + "\nFréquence de rotation\n" \
                                        "Abscisse : angle de rotation\n" \
                                        "Ordonnée : nombre de données ayant cette rotation"
@@ -313,7 +399,7 @@ def graphe_image_fov_et_rotation(nom_du_fichier):
     axis.set(xlim=(-10, 400))
     axis.plot([x for x in range(0, 360)], frequence_rot, color="red")
     axis.set_title(plot_title)
-    plt.savefig('./data/plot_rot/frequences/' + plot_title + '.png')
+    plt.savefig('./data/plot_rot/frequences/' + plot_title_template + '.png')
     plt.clf()
 
 
@@ -394,51 +480,24 @@ def nettoyage_cas_par_cas(fichiers):
             outfile.write(json_object)
 
 
-def nettoyage(fichiers):
-    for index in range(len(fichiers)):
-        nom_du_fichier = fichiers[index]
+def probabilite_de_validation_apres_zoom(nom_du_fichier):
 
-        est_en_2d = '2d' in nom_du_fichier
+    images_et_tps_zoom = {}
+    nombre_images_validees = 0
+    nombre_images_validees_apres_zoom = 0
 
-        data = []
-        with open('./data/json/' + nom_du_fichier, 'r+', encoding='utf8') as file:
-            data = json.loads(file.read())['frames']
+    data = []
+    with open(nom_du_fichier, 'r+', encoding='utf8') as file:
+        data = json.loads(file.read())['frames']
 
-        derniere_position = [0,0,0]
-        dernier_nb_images_validees = 0
-        cherche = False
-        temps_debut_recherche = 0
-        index_derniere_donnee = 0
-        nom_position = 'headPosition'
-        if est_en_2d: nom_position = 'mousePosition'
-        a_coupe = False
+    for d in data:
+        if d['controllerAction'] == 'Zoom':
+            images_et_tps_zoom[d['imageFilename']] = d['timeStamp']
 
-        for index_data in range(len(data)):
-            d = data[index_data]
-            if d['timeStamp'] < 300:
-                continue
-
-            if not cherche:
-                cherche = True
-                derniere_position = [v for v in d[nom_position].values()]
-                dernier_nb_images_validees = len(d['idValidated'])
-                temps_debut_recherche = d['timeStamp']
-            else:
-                if d['timeStamp'] - temps_debut_recherche > 50:
-                    if derniere_position == [v for v in d[nom_position].values()] and \
-                            dernier_nb_images_validees == len(d['idValidated']):
-                        index_derniere_donnee = index_data
-                        print(f"   a coupé {len(data)-index_derniere_donnee}")
-                        a_coupe = True
-                        break
-                    else:
-                        derniere_position = [v for v in d[nom_position].values()]
-                        dernier_nb_images_validees = len(d['idValidated'])
-
-        if a_coupe: data = data[:index_derniere_donnee]
-        json_object = json.dumps({'frames':data}, indent=4)
-        with open(f"./data/propre/{nom_du_fichier}", "w") as outfile:
-            outfile.write(json_object)
+        if nombre_images_validees > len(d['idValidated']):
+            nombre_images_validees = len(d['idValidated'])
+            if d['timeStamp'] - images_et_tps_zoom[d['imageFilename']] < 3:
+                nombre_images_validees_apres_zoom += 1
 
 
 def main():
@@ -497,3 +556,53 @@ def main():
 
 
 main()
+
+
+# N'EST PLUS UTILISE CAR NE DONNE PAS DE BONS RESULTATS
+'''
+def nettoyage(fichiers):
+    for index in range(len(fichiers)):
+        nom_du_fichier = fichiers[index]
+
+        est_en_2d = '2d' in nom_du_fichier
+
+        data = []
+        with open('./data/json/' + nom_du_fichier, 'r+', encoding='utf8') as file:
+            data = json.loads(file.read())['frames']
+
+        derniere_position = [0,0,0]
+        dernier_nb_images_validees = 0
+        cherche = False
+        temps_debut_recherche = 0
+        index_derniere_donnee = 0
+        nom_position = 'headPosition'
+        if est_en_2d: nom_position = 'mousePosition'
+        a_coupe = False
+
+        for index_data in range(len(data)):
+            d = data[index_data]
+            if d['timeStamp'] < 300:
+                continue
+
+            if not cherche:
+                cherche = True
+                derniere_position = [v for v in d[nom_position].values()]
+                dernier_nb_images_validees = len(d['idValidated'])
+                temps_debut_recherche = d['timeStamp']
+            else:
+                if d['timeStamp'] - temps_debut_recherche > 50:
+                    if derniere_position == [v for v in d[nom_position].values()] and \
+                            dernier_nb_images_validees == len(d['idValidated']):
+                        index_derniere_donnee = index_data
+                        print(f"   a coupé {len(data)-index_derniere_donnee}")
+                        a_coupe = True
+                        break
+                    else:
+                        derniere_position = [v for v in d[nom_position].values()]
+                        dernier_nb_images_validees = len(d['idValidated'])
+
+        if a_coupe: data = data[:index_derniere_donnee]
+        json_object = json.dumps({'frames':data}, indent=4)
+        with open(f"./data/propre/{nom_du_fichier}", "w") as outfile:
+            outfile.write(json_object)
+'''

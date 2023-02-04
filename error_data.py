@@ -1,3 +1,31 @@
+LAPS_TEMPS = {
+    'AmandineC3A':180,
+    'LouisC3A':90,
+    'SimonC1B':25,
+    'AmandineC2A':75,
+    'LouisC2A':0,
+    'MarieC2B':80,
+    'NathanC3A':10,
+    'ElodieC3B':10,
+    'GabinC3B':50,
+    'GabinC2B':0,
+    'NathanC1A':0,
+    'NathanaelC3B':40,
+    'NathanaelC1A':50,
+    'MarieC1B':10,
+    'ElodieC2B':0,
+    'LouisC1A':25,
+    'ElodieC1B':30,
+    'NathanC2A':10,
+    'NathanaelC2A':25,
+    'SimonC2B':30,
+    'MarieC3B':10,
+    'SimonC3B':45,
+    'VincenzoC1B':30,
+    'VincenzoC3B':40,
+    'VincenzoC2B':30,
+}
+
 AMANDINE_ERROR = {
     "idValidated": [
         "3505",

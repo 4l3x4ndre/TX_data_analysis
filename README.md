@@ -1,13 +1,13 @@
 # Étude expérimentale : analyse des données
 
 Dans le cadre d'une étude expérimentale pour l'Université de Technologie de Compiègne avec le laboratoire Costech et 
-l'ENSADLab, nous avons fait passer une expérience en réalité virtiuelle à une dizaine de participant.
+l'ENSADLab, nous avons fait passer une expérience en réalité virtuelle à une dizaine de participants.
 Les résultats sont analysés ici.
 
 Se conférer au rapport et aux fichiers de données de démonstration dans le dossier *RESULTATS*.
 
 ## Objectifs et Expérience
-À ce jour, l’essentiel des données est représenté aux utilisateurs dans un espace à deux dimensions : les smartphones, 
+À ce jour, l’essentiel des données est présenté aux utilisateurs dans un espace à deux dimensions : les smartphones, 
 ordinateurs et tablettes ne sont que des plans sur lesquels sont disposées des images.
 Pourtant, de plus en plus de solutions rendent le monde tri-dimensionnel transposable au digital, grâce notamment aux 
 casques de réalité virtuelle.
@@ -22,7 +22,7 @@ Pour tester ces hypothèses, un logiciel a été développé. Les participants o
 L’objectif est d’utiliser la réalité virtuelle pour effectuer de la recherche visuelle d'images. 
 Pour cela, la condition en réalité virtuelle (trois dimensions) sera comparée à la condition en deux dimensions, dite 
 “classique” car elle correspond à la recherche classique d’images sur un ordinateur. 
-L'objectif pour les participants est valider (en cliquant sur un bouton) le plus d'images correspondantes à la catégorie
+L'objectif pour les participants est valider (en cliquant sur un bouton) le plus d'images correspondant à la catégorie
 cible (comme "motos" ou "cannetons").
 
 Les participants ont pu se déplacer, zoomer sur les images et les valider (conditions 2D et 3D). Ils ont disposé de cinq
